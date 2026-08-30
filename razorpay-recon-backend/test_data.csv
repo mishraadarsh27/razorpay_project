@@ -1,0 +1,7 @@
+id,date,amount,description,reference
+INT001,2023-10-01,1500.00,Payment for services,REF123
+INT002,2023-10-02,2500.50,Software license,REF124
+INT003,2023-10-03,999.99,Cloud hosting monthly,REF125
+INT004,2023-10-04,1500.00,Payment for services,REF123
+INT005,2023-10-05,3000.00,Consulting fee Q3,REF126
+INT006,2023-10-06,450.75,Domain renewal,REF127
