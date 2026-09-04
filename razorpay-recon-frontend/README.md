@@ -1,16 +1,32 @@
-# React + Vite
+# 💻 Razorpay AI Reconciliation Engine - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+This is the web dashboard for the **Razorpay AI Reconciliation Engine**, built with **React 18**, **Vite**, **Tailwind CSS**, **Lucide Icons**, and **Recharts**.
 
-Currently, two official plugins are available:
+## 🚀 Features
+- **Executive KPI Cards**: Real-time totals, match rates, settlement variances, and detected leakages.
+- **Drag-and-Drop Ingestion**: Upload Payment Gateway, Bank, and OMS CSV files.
+- **Interactive Visualizations**: Recharts breakdown of match status and discrepancy distributions.
+- **Autonomous GenAI Chatbot Widget**: Floating Copilot powered by Groq Llama 3.3 for conversational financial auditing.
+- **Live WebSocket Support**: Real-time progress updates during batch processing.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🛠️ Tech Stack
+- **Framework**: React 18 + Vite
+- **Styling**: Tailwind CSS
+- **Icons**: Lucide React
+- **Charts**: Recharts
+- **Parsing**: PapaParse
+- **Markdown Rendering**: React-Markdown
 
-## React Compiler
+## 🏃 Running Locally
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+# Install dependencies
+npm install
 
-## Expanding the Oxlint configuration
+# Start Vite dev server
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+The application will run at `http://localhost:5173`. Make sure the FastAPI backend (`http://localhost:8000`) is running concurrently.
+
+For the complete project documentation, see the [Root README](../README.md).
