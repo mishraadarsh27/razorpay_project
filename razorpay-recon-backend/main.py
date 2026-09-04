@@ -8,8 +8,12 @@ from contextlib import asynccontextmanager
 
 from models import init_db, UploadResponse, Batch, AsyncSessionLocal
 from engine import ReconciliationEngine
+from pydantic import BaseModel
+from typing import List, Dict, Any
+from agent_engine import get_agent_response
+from catalog import CATALOG
 
-# --- WebSocket Connection Manager ---
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: list[WebSocket] = []
@@ -30,7 +34,7 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-# --- FastAPI App ---
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
@@ -38,7 +42,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Razorpay Reconciliation Engine", lifespan=lifespan)
 
-# Allow frontend (React) to connect
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], # Restrict to your Vercel/Netlify URL in production
@@ -47,23 +51,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory store for DataFrames (Use Redis/S3 in production)
+
 batch_store = {} 
 
-# --- WebSocket Endpoint ---
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
         while True:
-            # Keep connection alive, listen for pings or commands from frontend
+
             data = await websocket.receive_text()
             if data == "ping":
                 await websocket.send_json({"type": "pong"})
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
-# --- API Endpoints ---
+
 @app.post("/upload", response_model=UploadResponse)
 async def upload_dataset(file: UploadFile = File(...)):
     if not file.filename.endswith('.csv'):
@@ -72,7 +76,7 @@ async def upload_dataset(file: UploadFile = File(...)):
     contents = await file.read()
     df = pd.read_csv(io.BytesIO(contents))
     
-    # Basic validation
+    
     required_cols = {'date', 'amount', 'description'}
     if not required_cols.issubset(df.columns):
         raise HTTPException(status_code=400, detail=f"CSV must contain columns: {required_cols}")
@@ -101,12 +105,12 @@ async def run_reconciliation(batch_id: str, internal_df: pd.DataFrame, bank_df: 
 
     results = await engine.process(send_progress)
     
-    # Calculate final metrics
+    
     matched = sum(1 for r in results if r['status'] == 'MATCHED')
     exceptions = sum(1 for r in results if r['status'] == 'EXCEPTION')
     match_rate = (matched / len(results)) * 100 if results else 0
 
-    # Broadcast final results
+    
     await manager.broadcast({
         "type": "complete",
         "batch_id": batch_id,
@@ -126,21 +130,57 @@ async def process_reconciliation(batch_id: str, background_tasks: BackgroundTask
     
     df = batch_store[batch_id]
     
-    # For this demo, we split the uploaded CSV into two mock datasets 
-    # (Internal Ledger and Bank Statement) with slight variations to simulate real data.
-    # In production, you would upload TWO files or fetch from DBs.
+    
     internal_df = df.iloc[:len(df)//2].copy().reset_index(drop=True)
     bank_df = df.iloc[len(df)//2:].copy().reset_index(drop=True)
     
-    # Introduce slight noise to bank_df to test fuzzy matching
+    
     bank_df.loc[::3, 'description'] = bank_df.loc[::3, 'description'].apply(lambda x: f"PGWY {x}" if isinstance(x, str) else x)
     
-    # Run in background so the API responds immediately
+    
     background_tasks.add_task(run_reconciliation, batch_id, internal_df, bank_df)
     
     return {"message": "Processing started. Listen to WebSocket for updates."}
 
 @app.get("/results/{batch_id}")
 async def get_results(batch_id: str):
-    # Fallback endpoint if WebSocket drops, frontend can poll this
+    
     return {"message": "Use WebSocket for real-time results, or check dashboard state."}
+
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    message: str
+    history: List[ChatMessage] = []
+
+@app.post("/chat")
+async def chat_endpoint(request: ChatRequest):
+    
+    history = [{"role": msg.role, "content": msg.content} for msg in request.history]
+    
+    response_text = get_agent_response(request.message, history)
+    
+    return {"reply": response_text}
+
+@app.get("/catalog/ai-readable")
+async def ai_readable_catalog():
+    """Endpoint for AI buyers to scrape the catalog in a structured format."""
+    return {
+        "store_name": "Razorpay Hacker Store",
+        "currency": "INR",
+        "description": "Welcome to our store. We sell developer merchandise.",
+        "products": CATALOG
+    }
+
+
+import os
+from fastapi.staticfiles import StaticFiles
+
+frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "razorpay-recon-frontend", "dist"))
+
+if os.path.exists(frontend_dist):
+    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")

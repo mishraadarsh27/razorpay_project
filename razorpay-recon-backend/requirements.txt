@@ -8,3 +8,6 @@ python-multipart==0.0.9
 pydantic==2.7.4
 aiosqlite==0.20.0
 sqlalchemy==2.0.30
+groq
+razorpay
+python-dotenv

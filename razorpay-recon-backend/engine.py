@@ -24,12 +24,12 @@ class ReconciliationEngine:
         score = 0.0
         reasons = []
 
-        # 1. Exact Amount Match (50 points)
+        
         if abs(int_row['amount'] - bank_row['amount']) < 0.01:
             score += 50
             reasons.append("Exact Amount Match")
         
-        # 2. Date Proximity (20 points)
+        
         date_diff = abs((int_row['date'] - bank_row['date']).days)
         if date_diff == 0:
             score += 20
@@ -38,8 +38,7 @@ class ReconciliationEngine:
             score += 10
             reasons.append(f"Date within {date_diff} days")
 
-        # 3. Fuzzy Text Matching on Description/Reference (30 points)
-        # Combining description and reference for better context
+        
         int_text = f"{int_row.get('description', '')} {int_row.get('reference', '')}"
         bank_text = f"{bank_row.get('description', '')} {bank_row.get('reference', '')}"
         
@@ -57,7 +56,7 @@ class ReconciliationEngine:
     async def generate_ai_reasoning(self, int_row, bank_row, confidence_score, reasons):
         """Uses GenAI to generate human-readable explanation for exceptions"""
         if confidence_score >= 75:
-            return None  # No need for AI reasoning if already matched
+            return None  
         
         prompt = f"""
         You are a financial reconciliation expert AI. Analyze these two transaction records:
@@ -86,7 +85,7 @@ class ReconciliationEngine:
         
         try:
             response = client.chat.completions.create(
-                model="openai/gpt-oss-20b",  # <--- YEH 100% STABLE HAI
+                model="openai/gpt-oss-20b",  
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
                 max_tokens=150
@@ -100,12 +99,12 @@ class ReconciliationEngine:
         total_internal = len(self.internal_df)
         processed = 0
 
-        # Phase 1: Exact Matching (Fast path)
+        
         await progress_callback("Starting Exact Match Phase...")
         for idx, int_row in self.internal_df.iterrows():
             if int_row['matched']: continue
             
-            # Find exact matches in bank statement
+            
             exact_matches = self.bank_df[
                 (self.bank_df['amount'] == int_row['amount']) & 
                 (self.bank_df['date'] == int_row['date']) &
@@ -130,9 +129,9 @@ class ReconciliationEngine:
             processed += 1
             if processed % 100 == 0:
                 await progress_callback(f"Exact Match: {processed}/{total_internal} records processed.")
-                await asyncio.sleep(0.1) # Simulate processing time / yield to event loop
+                await asyncio.sleep(0.1) 
 
-        # Phase 2: Fuzzy Matching for Exceptions (AI path)
+        
         await progress_callback("Starting AI Fuzzy Match Phase for unresolved records...")
         unmatched_internal = self.internal_df[~self.internal_df['matched']]
         unmatched_bank = self.bank_df[~self.bank_df['matched']]
@@ -150,7 +149,7 @@ class ReconciliationEngine:
                     best_match = (b_idx, bank_row)
                     best_reasons = reasons
 
-            # Thresholding: 75.0 is the cutoff for auto-match
+            
             if best_score >= 75.0 and best_match:
                 b_idx, bank_row = best_match
                 self.internal_df.at[idx, 'matched'] = True
@@ -164,7 +163,7 @@ class ReconciliationEngine:
                     "reasons": best_reasons
                 })
             else:
-                # Route to Exception List with AI Analysis
+                
                 ai_reasoning = None
                 if best_match:
                     b_idx, bank_row = best_match
@@ -176,7 +175,7 @@ class ReconciliationEngine:
                     "confidence_score": best_score if best_match else 0.0,
                     "status": "EXCEPTION",
                     "reasons": best_reasons if best_match else ["No viable match found"],
-                    "ai_analysis": ai_reasoning  # New field for GenAI reasoning
+                    "ai_analysis": ai_reasoning  
                 })
 
             fuzzy_processed += 1
